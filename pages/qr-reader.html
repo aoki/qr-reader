@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<style>
+  canvas{
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+video{
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+</style>
+<body>
+<script>
+
+(async function main() {
+  // 対応フォーマットの取得
+  const formats = await BarcodeDetector.getSupportedFormats();
+
+  if(!formats.includes('qr_code')) {
+    throw new Error('QRコードがサポートされていません…');
+  }else {
+    console.log(formats);
+  }
+
+  // 背面カメラへアクセスする
+  const constraints = {
+        audio: false,  // オーディオデバイスは使用しない
+        video: true // デフォルトのカメラデバイスを使用する
+    };
+  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+
+  var canvas        = document.createElement('canvas');
+  canvas.id     = 'canvas';
+  canvas.width  = 720;
+  canvas.height = 480;
+  document.body.appendChild(canvas);
+  var context = canvas.getContext( "2d" ) ;
+  context.beginPath () ;
+
+
+  // カメラをvideo要素と結びつける
+  const video = document.createElement('video');
+  video.srcObject = stream;
+
+  // 画面にvideo要素を追加する（確認用）
+  video.width = 720;
+  video.height = 480;
+  document.body.appendChild(video);
+
+  // 再生を開始する
+  await video.play();
+
+  // 検出をQRコードのみに限定する
+  const detector = new BarcodeDetector({
+    formats: ['qr_code']
+  });
+
+  // 一定時間ごと（ここでは500ミリ秒間隔）に
+  // QRコードの検出を試みる
+  const timer = setInterval(async () => {
+    const detectionList = await detector.detect(video);
+    console.log(detectionList);
+    for(const detected of detectionList) {
+      console.log(detected.rawValue);
+      console.log(detected.boundingBox);
+      context.moveTo(0,0) ;
+      context.rect(detected.boundingBox.x, detected.boundingBox.y, detected.boundingBox.width, detected.boundingBox.height);
+      context.strokeStyle = "red" ;
+      context.lineWidth = 2 ;
+      context.stroke() ;
+      // clearInterval(timer);
+    }
+  }, 500);
+})();
+
+
+</script>
+</body>
+</html>
